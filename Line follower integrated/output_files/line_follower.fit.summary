@@ -1,0 +1,16 @@
+Fitter Status : Successful - Sun Nov 13 23:46:13 2022
+Quartus Prime Version : 18.1.0 Build 625 09/12/2018 SJ Lite Edition
+Revision Name : line_follower
+Top-level Entity Name : line_follower
+Family : Cyclone IV E
+Device : EP4CE115F29C7
+Timing Models : Final
+Total logic elements : 3,433 / 114,480 ( 3 % )
+    Total combinational functions : 3,349 / 114,480 ( 3 % )
+    Dedicated logic registers : 835 / 114,480 ( < 1 % )
+Total registers : 835
+Total pins : 96 / 529 ( 18 % )
+Total virtual pins : 0
+Total memory bits : 3,153,384 / 3,981,312 ( 79 % )
+Embedded Multiplier 9-bit elements : 0 / 532 ( 0 % )
+Total PLLs : 1 / 4 ( 25 % )

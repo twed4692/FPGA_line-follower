@@ -1,0 +1,212 @@
+/*--------------------------------------------------------------------------------------------------
+Edge detection first buffer;
+
+This module is intended to be used as the first line buffer in an edge detection filter. It takes
+data input in the form of a 12-bit RGB pixel. 
+
+Each time a new pixel is provided, all pixels in the  buffer are shifted over by 1 and the new 
+pixel is placed at the start of the buffer. Before being placed, the new pixel is also converted
+to greyscale. Since all buffers derive input from this buffer, all buffers will contain greyscale
+values.
+
+The buffer also keeps count of the current pixel's horizontal and vertical position; this is used
+to determine whether buffers are full, if we are at an edge, or if a frame is completed.
+
+Author: Taj Wedutenko
+--------------------------------------------------------------------------------------------------*/
+module ed_first_buffer
+(
+	input clk, 
+	input reset, 
+	input [11:0] data_in, 
+	output [11:0] out, 
+	output [9:0] h_pos,
+	output [8:0] v_pos,
+);
+
+/*--------------------------------------------------------------------------------------------------
+Variable declaration
+--------------------------------------------------------------------------------------------------*/
+
+// Horizontal, vertical image size
+parameter h_size = 10'd640;
+parameter v_size =  9'd480;
+
+// Horizontal, vertical counters
+reg [9:0] h_count;
+reg [8:0] v_count;
+
+// Buffer related variables
+reg [11:0] shiftRegister[(h_size - 1):0];
+reg [11:0] greyscale_pix;
+reg [9:0]  i;
+
+// Output
+reg [11:0] data_out;			
+
+/*--------------------------------------------------------------------------------------------------
+Buffering
+--------------------------------------------------------------------------------------------------*/
+always@(posedge clk)
+begin
+	// Reset values to default, called at each new frame
+	if(reset)
+	begin
+		h_count				<= 0;	// Start at column 0 as column 1 is reached on first call
+		v_count 				<= 1;	// Start at row 1
+		data_out 			<= 12'hxxxxxxxxxxxx;
+	end
+	// Perform buffering as usual
+	else
+	begin
+		// Shift all data over by 1, increment horizontal counter
+		begin
+			h_count <= h_count + 1;
+			for (i=10'd1; i < h_size; i = i + 1) 
+			begin
+				shiftRegister[i] <= shiftRegister[i - 1];
+			end
+		end
+		
+		// Determine if at newline, perform greyscale conversion
+		begin
+			// If exceeded horizontal max, at newline
+			if (h_count > h_size) 
+			begin
+				h_count <= 1;
+				v_count <= v_count + 1;
+			end
+			
+			// Convert input pixel to greyscale
+			greyscale_pix[3:0] <= (data_in[11:8]+data_in[7:4]+data_in[3:0])/3;
+		end
+		
+		// Read input data into buffer and set output
+		begin
+			shiftRegister[0] <= {greyscale_pix[3:0], greyscale_pix[3:0], greyscale_pix[3:0]};
+			data_out <= shiftRegister[h_size - 1];
+		end
+	end
+end
+
+/*--------------------------------------------------------------------------------------------------
+Output assignment
+--------------------------------------------------------------------------------------------------*/
+assign out = data_out;  
+assign h_pos = h_count;
+assign v_pos = v_count;
+
+endmodule
+
+
+/*
+
+// Horizontal, vertical image size
+parameter h_size = 640;
+parameter v_size = 480;
+
+// Horizontal, vertical counters
+reg [9:0] h_count;
+reg [8:0] v_count;
+
+// Buffer related variables
+reg [11:0] shiftRegister[(h_size - 1):0];
+reg [11:0] greyscale_pix;
+integer i;
+
+// Output values
+reg buffer_full_true;
+reg frame_done_true;
+reg [3:0] data_out;			
+reg [3:0] which_edge;		
+
+always@(posedge clk)
+begin
+	// Reset values to zero
+	if(reset)
+	begin
+		h_count				<= 0;	// Start at column 0 as column 1 is reached on first call
+		v_count 				<= 1;	// Start at row 1
+		frame_done_true 	<= 1'b0;
+		buffer_full_true 	<= 1'b0;
+		which_edge 			<= 4'b0;
+		data_out 			<= 12'hxxxxxxxxxxxx;
+	end
+	else
+	begin
+		// Shift all data over by 1, increment horizontal counter
+		begin
+			h_count <= h_count + 1;
+			for (i=1; i < h_size; i= i + 1) 
+			begin
+				shiftRegister[i] <= shiftRegister[i - 1];
+			end
+		end
+		
+		// Increment vertical counter if needed, perform greyscale conversion
+		begin
+			// Newline, at left edge
+			if (h_count > h_size) 
+			begin
+				h_count <= 1;
+				v_count <= v_count + 1;
+				which_edge[3] <= 1'b1;
+				which_edge[2] <= 1'b0;
+			end
+			// At right edge
+			else if (h_count == h_size)
+			begin
+				which_edge[3] <= 1'b0;
+				which_edge[2] <= 1'b1;
+			end
+			// Otherwise at neither left nor right
+			else 
+			begin
+				which_edge[3] <= 1'b0;
+				which_edge[2] <= 1'b0;
+			end
+			
+			// Convert input pixel to greyscale
+			greyscale_pix[3:0] <= (data_in[11:8]+data_in[7:4]+data_in[3:0])/3;
+		end
+		
+		// Determine vertical edge values, output values
+		begin
+			// At top
+			if (v_count == 1)
+			begin
+				which_edge[1] <= 1'b1;
+				which_edge[0] <= 1'b0;
+			end
+			// At bottom
+			else if (v_count == v_size)
+			begin
+				which_edge[1] <= 1'b0;
+				which_edge[0] <= 1'b1;
+			end
+			// Otherwise at neither top nor bottom
+			else 
+			begin
+				which_edge[1] <= 1'b0;
+				which_edge[0] <= 1'b0;
+			end
+			
+			// If we are past 4th line, buffer is filled
+			if (v_count > 4)
+			begin
+				buffer_full_true <= 1'b1;
+			end
+			
+			// If we are at the final corner, frame is finished
+			if (v_count == 480 && h_count == 640)
+			begin
+				frame_done_true <= 1'b1;
+			end
+			
+			// Read input data into buffer and set output
+			shiftRegister[0] <= {greyscale_pix[3:0], greyscale_pix[3:0], greyscale_pix[3:0]};
+			data_out <= shiftRegister[h_size - 1];
+		end
+	end
+end
+*/

@@ -1,0 +1,4 @@
+Warning (10273): Verilog HDL warning at ed_first_buffer.v(59): extended using "x" or "z" File: C:/Users/tajwe/Desktop/quartus_files/MTRX3700_MAJOR/Line follower integrated/ed_first_buffer.v Line: 59
+Warning (10268): Verilog HDL information at ed_first_buffer.v(52): always construct contains both blocking and non-blocking assignments File: C:/Users/tajwe/Desktop/quartus_files/MTRX3700_MAJOR/Line follower integrated/ed_first_buffer.v Line: 52
+Warning (10273): Verilog HDL warning at ed_binarisation_filter.v(94): extended using "x" or "z" File: C:/Users/tajwe/Desktop/quartus_files/MTRX3700_MAJOR/Line follower integrated/ed_binarisation_filter.v Line: 94
+Warning (10273): Verilog HDL warning at ed_binarisation_filter.v(173): extended using "x" or "z" File: C:/Users/tajwe/Desktop/quartus_files/MTRX3700_MAJOR/Line follower integrated/ed_binarisation_filter.v Line: 173

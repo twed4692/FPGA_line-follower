@@ -1,0 +1,113 @@
+//--------------overarching PID controller------------------
+// NOTE: we are multiplying all gains by 8192 (and rounding to nearest int) so we dont have
+// floating point numbers, and then applying a 12-bit right shift at the end to account for this
+module controller(input clk, input [15:0] centroid, input [7:0] speed, output [15:0] pulse_L, output [15:0] pulse_R);
+
+reg [15:0] error;
+reg [15:0] adjustment;
+wire [15:0] P, I, D; // this is probably gonna fuck the negative numbers, give this a test
+reg [15:0] speed_R, speed_L;
+reg [15:0] max;
+reg direction;
+parameter base_pulse = 16'd50000;
+parameter target = 8'd159;
+
+proportional _proportional(.clk(clk), .error(error), .P(P));
+integral _integral(.clk(clk), .error(error), .I(I));
+derivative _derivative(.clk(clk), .error(error), .D(D));
+
+always @ (posedge clk) begin
+
+	if (centroid < target) begin
+		error = target - centroid;
+		direction = 0;		//left
+	end
+	else begin
+		error = centroid - target;
+		direction = 1;		// right
+	end	
+		
+	adjustment = P + I + D;				// adjustment based on proportional, integral, derivative gains
+	
+	if (direction == 0) begin
+		speed_R = speed + adjustment;
+		speed_L = speed - adjustment;
+	end
+	else begin
+		speed_R = speed - adjustment;		
+		speed_L = speed + adjustment;
+	end
+	
+	
+	speed_R = speed_R < 16'd0 ? 16'd0 : speed_R;
+	speed_R = speed_R > 16'd100 ? 16'd100 : speed_R;		// this could interfere with controller function
+	
+	
+	speed_L = speed_L < 16'd0 ? 16'd0 : speed_L;
+	speed_L = speed_L > 16'd100 ? 16'd100 : speed_L;		
+end
+
+assign pulse_R = base_pulse + 1000*speed_R;
+assign pulse_L = base_pulse + 1000*speed_L;
+	
+endmodule
+
+
+//--------------proportional controller------------------
+module proportional(input clk, input [15:0] error, output [15:0] P);
+
+integer KP, adjustment_P;
+
+initial begin
+	KP <= 8; 	// should be obvious :/
+end
+
+always @ (posedge clk) begin
+	
+	adjustment_P <= error/KP;
+end
+
+assign P = adjustment_P;
+	
+endmodule
+
+//--------------integral controller------------------
+module integral(input clk, input [15:0] error, output [31:0] I);
+
+integer KI, adjustment_I, sum_error, last_error;
+
+initial begin
+	KI <= 0;//89; 	// 0.01*8192
+	sum_error <= 0;
+	last_error <= 0;
+end
+
+always @ (posedge clk) begin
+	sum_error <= sum_error + (error-last_error)/2;
+	adjustment_I <= KI*sum_error;
+	last_error <= error;		// same question as assignment order in D controller
+end
+
+assign I = adjustment_I;
+
+endmodule
+
+//--------------derivative controller------------------
+module derivative(input clk, input [15:0] error, output [31:0] D);
+
+integer KD, adjustment_D, last_error;
+
+initial begin
+	KD <= 0;//410;	// 0.05*8192
+	last_error <= 0;
+end
+
+always @ (posedge clk) begin
+	
+	adjustment_D <= KD*(error-last_error);
+	last_error <= error;			// should be ok from memory but maybe this needs to be sequential
+end
+
+assign D = adjustment_D;
+
+endmodule

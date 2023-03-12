@@ -1,0 +1,69 @@
+/*--------------------------------------------------------------------------------------------------
+Edge detection generic buffer;
+
+This module is intended to be used as a generic line buffer in an edge detection filter. It takes
+data input in the form of a 12-bit RGB pixel. 
+
+Each time a new pixel is provided, all pixels in the  buffer are shifted over by 1 and the new 
+pixel is placed at the start of the buffer. 
+
+Author: Taj Wedutenko
+--------------------------------------------------------------------------------------------------*/
+module ed_generic_buffer
+(
+	input clk, 
+	input ready, 
+	input [11:0] data_in, 
+	output [11:0] out
+);
+
+/*--------------------------------------------------------------------------------------------------
+Variable declaration
+--------------------------------------------------------------------------------------------------*/
+
+// Horizontal, vertical image size
+parameter h_size = 10'd640;
+
+// Buffer related variables
+reg [11:0] shiftRegister[(h_size - 1):0];
+reg [9:0]  i;
+
+// Output values
+reg [11:0] 	data_out;	
+
+/*--------------------------------------------------------------------------------------------------
+Buffering
+--------------------------------------------------------------------------------------------------*/
+								
+always@(posedge clk)
+begin
+	if (ready)
+	begin
+		// Shift all data over by 1
+		begin
+			for (i = 1; i < h_size; i = i + 1) 
+			begin
+				shiftRegister[i] <= shiftRegister[i - 1];
+			end
+		end
+		
+		// Read input data into buffer and set output
+		begin
+			shiftRegister[0] <= data_in;
+			data_out <= shiftRegister[h_size - 1];
+		end
+	end
+	
+	else
+	begin
+		data_out <= 12'hxxxxxxxxxxxx;
+	end
+end
+
+/*--------------------------------------------------------------------------------------------------
+Output assignment
+--------------------------------------------------------------------------------------------------*/
+
+assign out = data_out;  
+
+endmodule
